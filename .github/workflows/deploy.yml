@@ -1,0 +1,7 @@
+# name: Deploy Actions
+
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - master
