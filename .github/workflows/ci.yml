@@ -2,10 +2,8 @@ name: CI
 
 on:
   pull_request:
-
-defaults:
-  run:
-    working-directory: server
+  push:
+    branches: [ main ]
 
 jobs:
   scan_ruby:
@@ -18,11 +16,8 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3.9
+          ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
@@ -37,14 +32,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3.9
+          ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Install dependencies
-        run: bundle install
-
       - name: Scan for security vulnerabilities in JavaScript dependencies
-        run: bin/importmap audit
+        run: server/bin/importmap audit
 
   lint:
     runs-on: ubuntu-latest
@@ -55,14 +47,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3.9
+          ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Install dependencies
-        run: bundle install
-
       - name: Lint code for consistent style
-        run: bin/rubocop -f github
+        run: server/bin/rubocop -f github
 
   test:
     runs-on: ubuntu-latest
@@ -75,7 +64,6 @@ jobs:
     #    options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Install packages
-        working-directory: .
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config google-chrome-stable
 
       - name: Checkout code
@@ -84,17 +72,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3.9
+          ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Run tests
         env:
           RAILS_ENV: test
           # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test test:system
+        run: server/bin/rails db:test:prepare test test:system
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v4
