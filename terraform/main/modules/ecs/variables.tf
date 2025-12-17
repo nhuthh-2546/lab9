@@ -1,12 +1,12 @@
 variable "project" {
-  type        = string
+  type = string
 }
 
 variable "ecs_cluster_name" {
-  type        = string
+  type = string
 }
 variable "ecs_cluster_id" {
-  type        = string
+  type = string
 }
 
 variable "ecs_services" {

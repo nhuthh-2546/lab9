@@ -1,5 +1,5 @@
 resource "aws_vpc" "vpc" {
-  cidr_block = var.vpc_cidr
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
 
   tags = {
@@ -8,7 +8,7 @@ resource "aws_vpc" "vpc" {
 }
 
 resource "aws_subnet" "public_subnet" {
-  count = length(var.public_subnet_cidrs)
+  count             = length(var.public_subnet_cidrs)
   vpc_id            = aws_vpc.vpc.id
   cidr_block        = var.public_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
@@ -18,7 +18,7 @@ resource "aws_subnet" "public_subnet" {
 }
 
 resource "aws_subnet" "private_subnet" {
-  count = length(var.private_subnet_cidrs)
+  count             = length(var.private_subnet_cidrs)
   vpc_id            = aws_vpc.vpc.id
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
@@ -28,7 +28,7 @@ resource "aws_subnet" "private_subnet" {
 }
 
 resource "aws_subnet" "database_subnet" {
-  count = length(var.database_subnet_cidrs)
+  count             = length(var.database_subnet_cidrs)
   vpc_id            = aws_vpc.vpc.id
   cidr_block        = var.database_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
@@ -59,21 +59,21 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "pubic" {
-  for_each = { for k,v in aws_subnet.public_subnet : k => v}
-  subnet_id = each.value.id
+  for_each       = { for k, v in aws_subnet.public_subnet : k => v }
+  subnet_id      = each.value.id
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_eip" "nat" {
-  domain   = "vpc"
+  domain = "vpc"
 }
 
 resource "aws_nat_gateway" "private" {
   allocation_id = aws_eip.nat.id
-  subnet_id = aws_subnet.public_subnet[0].id
-  depends_on = [ aws_internet_gateway.ig ]
+  subnet_id     = aws_subnet.public_subnet[0].id
+  depends_on    = [aws_internet_gateway.ig]
 
-  tags  = {
+  tags = {
     Name = "NAT"
   }
 }
@@ -82,14 +82,14 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.vpc.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.private.id
   }
 }
 
 resource "aws_route_table_association" "private" {
-  for_each = { for k,v in aws_subnet.private_subnet : k => v}
-  subnet_id = each.value.id
+  for_each       = { for k, v in aws_subnet.private_subnet : k => v }
+  subnet_id      = each.value.id
   route_table_id = aws_route_table.private.id
 }
 
@@ -103,7 +103,7 @@ resource "aws_db_subnet_group" "db_subnet" {
 }
 
 resource "aws_elasticache_subnet_group" "redis_subnet" {
-  name = "${var.project}-redis-subnet"
+  name       = "${var.project}-redis-subnet"
   subnet_ids = aws_subnet.database_subnet[*].id
 
   tags = {
@@ -139,9 +139,9 @@ resource "aws_security_group" "web_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
   }
 }
 
@@ -156,14 +156,14 @@ resource "aws_security_group" "db_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
   }
 }
 
 resource "aws_security_group" "redis_sg" {
-  vpc_id      = aws_vpc.vpc.id
+  vpc_id = aws_vpc.vpc.id
   ingress {
     from_port       = 6379
     to_port         = 6379
@@ -171,9 +171,9 @@ resource "aws_security_group" "redis_sg" {
     security_groups = [aws_security_group.web_sg.id]
   }
 
-   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+  egress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
   }
 }

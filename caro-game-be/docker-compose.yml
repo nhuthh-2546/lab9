@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - bundle_data:/usr/local/bundle
+    depends_on:
+      - db
+      - redis
+    stdin_open: true
+    tty: true
+    networks:
+      - caro-game-network
+
+  db:
+    image: postgres:14.20
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=caro_game_development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - caro-game-network
+
+volumes:
+  postgres_data:
+  bundle_data:
+
+networks:
+  caro-game-network:

@@ -1,0 +1,45 @@
+[
+  {
+    "name": "${container_name}",
+    "image": "${image}",
+    "essential": true,
+    "portMappings": [
+      {
+        "containerPort": ${container_port},
+        "hostPort": ${container_port},
+        "protocol": "tcp"
+      }
+    ],
+    "environment": [
+      {
+        "name": "RAILS_ENV",
+        "value": "${rails_env}"
+      },
+      {
+        "name": "RAILS_LOG_TO_STDOUT",
+        "value": "true"
+      },
+      {
+        "name": "DATABASE_URL",
+        "value": "${database_url}"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "${log_group}",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    },
+    "healthCheck": {
+      "command": ["CMD-SHELL", "curl -f http://localhost:${container_port}/health || exit 1"],
+      "interval": 30,
+      "timeout": 5,
+      "retries": 3,
+      "startPeriod": 60
+    },
+    "memory": ${memory},
+    "cpu": ${cpu}
+  }
+]

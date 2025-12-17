@@ -3,7 +3,7 @@ resource "aws_ecs_service" "ecs_service" {
 
   name                   = "${var.project}-${each.value.name}-ecs-service"
   cluster                = var.ecs_cluster_name != null ? aws_ecs_cluster.ecs_cluster[0].id : var.ecs_cluster_id
-  task_definition        = each.value.task_definition_arn
+  task_definition        = each.value.task_definition_arn != null ? each.value.task_definition_arn : aws_ecs_task_definition.ecs_task_definition[each.value.name].arn
   desired_count          = each.value.desired_count
   launch_type            = "FARGATE"
   platform_version       = each.value.platform_version

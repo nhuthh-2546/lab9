@@ -1,5 +1,5 @@
 variable "vpc_cidr" {
-  type = string
+  type    = string
   default = "10.0.0.0/16"
 }
 
@@ -20,5 +20,5 @@ variable "database_subnet_cidrs" {
 }
 
 variable "project" {
-  type    = string
+  type = string
 }
