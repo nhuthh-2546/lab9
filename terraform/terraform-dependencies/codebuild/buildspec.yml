@@ -1,0 +1,38 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Installing dependencies..."
+      - aws --version
+  pre_build:
+    commands:
+      - REPOSITORY_REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - API_REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$API_REPOSITORY_NAME
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - API_IMAGE=$API_REPOSITORY_URI:$IMAGE_TAG
+      - docker pull $API_REPOSITORY_URI:latest || true
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_REGISTRY
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - cd caro-game-be && docker build --cache-from $API_REPOSITORY_URI:latest -f ./Dockerfile -t $API_REPOSITORY_URI:latest .
+      - docker tag $API_REPOSITORY_URI:latest $API_REPOSITORY_URI:$IMAGE_TAG
+      - echo Build completed on `date`
+  post_build:
+    commands:
+      - echo Pushing the Docker images...
+      - docker push $API_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $API_REPOSITORY_URI:latest
+      - mkdir -p build
+      - sh -c "envsubst < appspec.yml  > build/appspec.yml  && cat build/appspec.yml"
+      - sh -c "envsubst < taskdef.json > build/taskdef.json && cat build/taskdef.json"
+      - sh -c "envsubst < worker-taskdef.json > build/worker-taskdef.json && cat build/worker-taskdef.json"
+artifacts:
+  base-directory: caro-game-be/build
+  files:
+    - appspec.yml
+    - taskdef.json
+    - worker-taskdef.json

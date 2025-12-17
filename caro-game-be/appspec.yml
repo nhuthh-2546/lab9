@@ -1,0 +1,50 @@
+# =============================================================================
+# AWS CodeDeploy Application Specification
+# Blue/Green Deployment for Caro Game Backend
+# =============================================================================
+
+version: 0.0
+os: linux
+
+files:
+  - source: /
+    destination: /app
+
+permissions:
+  - object: /app
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+    type:
+      - directory
+  - object: /app/scripts
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+    type:
+      - file
+
+hooks:
+  # Before Install: Stop any existing application
+  BeforeInstall:
+    - location: scripts/before_install.sh
+      timeout: 300
+      runas: root
+
+  # After Install: Set up application dependencies
+  AfterInstall:
+    - location: scripts/after_install.sh
+      timeout: 300
+      runas: root
+
+  # Application Start: Start the new version
+  ApplicationStart:
+    - location: scripts/application_start.sh
+      timeout: 300
+      runas: root
+
+  # Validate Service: Verify the deployment was successful
+  ValidateService:
+    - location: scripts/validate_service.sh
+      timeout: 300
+      runas: root

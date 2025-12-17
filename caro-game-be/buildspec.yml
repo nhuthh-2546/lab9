@@ -1,0 +1,95 @@
+# =============================================================================
+# CodeBuild Buildspec for Caro Game Backend
+# Build, Test, and Push Docker Image to ECR
+# =============================================================================
+
+version: 0.2
+
+env:
+  variables:
+    RAILS_ENV: "production"
+    BUNDLE_WITHOUT: "development:test"
+
+phases:
+  install:
+    runtime-versions:
+      ruby: 3.3
+      docker: 20
+    commands:
+      - echo "Installing dependencies..."
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase started on $(date)"
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "Image tag will be ${IMAGE_TAG}"
+      
+      # Run Brakeman security scan
+      - echo "Running Brakeman security scan..."
+      - cd caro-game-be
+      - bundle install --jobs 4 --retry 3
+      - bundle exec brakeman -f json -o brakeman-results.json --no-exit-on-warn || true
+      - cd ..
+
+  build:
+    commands:
+      - echo "Build started on $(date)"
+      - echo "Building the Docker image..."
+      - cd caro-game-be
+      
+      # Build Docker image with build args
+      - |
+        docker build \
+          --build-arg RAILS_ENV=$RAILS_ENV \
+          --build-arg BUNDLE_WITHOUT="$BUNDLE_WITHOUT" \
+          --cache-from $ECR_REPOSITORY_URI:latest \
+          -t $ECR_REPOSITORY_URI:$IMAGE_TAG \
+          -t $ECR_REPOSITORY_URI:latest \
+          -t $ECR_REPOSITORY_URI:$ENVIRONMENT \
+          .
+      
+      - cd ..
+
+  post_build:
+    commands:
+      - echo "Post-build started on $(date)"
+      - echo "Pushing the Docker image to ECR..."
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:latest
+      - docker push $ECR_REPOSITORY_URI:$ENVIRONMENT
+      
+      # Create image definitions file for CodeDeploy
+      - echo "Creating image definitions file..."
+      - printf '[{"name":"caro-game-api","imageUri":"%s"}]' $ECR_REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
+      
+      # Copy necessary files for deployment
+      - cp caro-game-be/appspec.yml .
+      - cp -r caro-game-be/scripts .
+      
+      - echo "Build completed successfully!"
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yml
+    - scripts/**/*
+    - caro-game-be/brakeman-results.json
+  discard-paths: no
+
+cache:
+  paths:
+    - '/root/.bundle/**/*'
+    - '/root/.cache/pip/**/*'
+    - '/var/lib/docker/**/*'
+
+reports:
+  brakeman:
+    files:
+      - caro-game-be/brakeman-results.json
+    file-format: GENERICJSON
